@@ -1,0 +1,45 @@
+# ~/ml_project/prefect.yaml
+name: ml-pipeline-project
+description: Orchestrating ML data processing, training, and evaluation.
+
+package:
+  python:
+    # Add all your project's Python dependencies here.
+    # Make sure they match what's in your venv.
+    pip:
+      - prefect>=3.7.4
+      - pandas # Example dependency, replace with your actual libraries
+      - scikit-learn # Example dependency
+      # Add any other libraries your pipeline_prefect.py script uses
+
+deployments:
+  # Deployment 1: Runs the full pipeline
+  - name: "full-pipeline-deployment" # A descriptive name for this deployment
+    version: "1.0"
+    description: "Runs the complete ML pipeline: data processing, training, and evaluation."
+    # This entrypoint tells Prefect to run the 'ml_pipeline' flow
+    # and pass the argument 'flow_to_run="all"' to it.
+    entrypoint: "pipeline_prefect.py:ml_pipeline(flow_to_run='all')"
+    schedule:
+      # Optional: uncomment and configure if you want it to run on a schedule
+      # cron: "0 0 * * *" # Example: Run daily at midnight UTC
+
+  # Deployment 2: Runs only the training phase
+  - name: "training-deployment"
+    version: "1.0"
+    description: "Runs only the model training phase."
+    # This entrypoint specifically targets the training flow.
+    entrypoint: "pipeline_prefect.py:ml_pipeline(flow_to_run='entrainement')"
+    schedule:
+      # Optional: uncomment and configure if you want it to run on a schedule
+      # interval: "3600" # Example: Run every hour (in seconds)
+
+  # Deployment 3: Runs only the evaluation phase
+  - name: "evaluation-deployment"
+    version: "1.0"
+    description: "Runs only the model evaluation phase."
+    # This entrypoint targets the evaluation flow.
+    entrypoint: "pipeline_prefect.py:ml_pipeline(flow_to_run='evaluate')"
+    schedule:
+      # Optional: uncomment and configure if you want it to run on a schedule
+      # cron: "0 4 * * *" # Example: Run daily at 4 AM UTC
