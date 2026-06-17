@@ -1,5 +1,7 @@
 from prefect import task, flow
 from model_pipeline import prepare_data, train_model, evaluate_model, save_model
+import subprocess
+import os
 
 @task(name="prepare-data-task")
 def task_prepare_data(filepath):
@@ -30,6 +32,7 @@ def pipeline_full(filepath="Churn_Modelling.csv"):
 def entrainement_flow(filepath="Churn_Modelling.csv"):
     X_train, X_test, y_train, y_test = task_prepare_data(filepath)
     model = task_train_model(X_train, y_train)
+    task_save_model(model)
     print("Training completed")
     return model
 
@@ -43,6 +46,17 @@ def evaluate_flow(filepath="Churn_Modelling.csv"):
     print(f"Evaluation completed. Accuracy: {accuracy:.4f}")
     return accuracy
 
+@flow(name="Lancement API FastAPI", log_prints=True)
+def api_flow(port: int = 8000):
+    """Démarre le serveur FastAPI via Uvicorn"""
+    print(f"🚀 Démarrage de l'API FastAPI sur le port {port}...")
+    subprocess.run([
+        "uvicorn", "app:app",
+        "--host", "0.0.0.0",
+        "--port", str(port),
+        "--reload"
+    ])
+
 if __name__ == "__main__":
     import sys
     flow_type = sys.argv[1] if len(sys.argv) > 1 else "full"
@@ -52,5 +66,7 @@ if __name__ == "__main__":
         entrainement_flow()
     elif flow_type == "evaluate":
         evaluate_flow()
+    elif flow_type == "api":
+        api_flow()
     else:
-        print("Unknown flow type. Use 'full', 'entrainement', or 'evaluate'.")
+        print("Unknown flow type. Use 'full', 'entrainement', 'evaluate' , or 'api' .")
