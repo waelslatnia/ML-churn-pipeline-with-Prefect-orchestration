@@ -1,7 +1,12 @@
 from prefect import task, flow
 from model_pipeline import prepare_data, train_model, evaluate_model, save_model
+import mlflow
+import mlflow.sklearn
 import subprocess
 import os
+
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("churn_experiment")
 
 @task(name="prepare-data-task")
 def task_prepare_data(filepath):
@@ -30,11 +35,28 @@ def pipeline_full(filepath="Churn_Modelling.csv"):
 
 @flow(name="Entrainement", log_prints=True)
 def entrainement_flow(filepath="Churn_Modelling.csv"):
-    X_train, X_test, y_train, y_test = task_prepare_data(filepath)
-    model = task_train_model(X_train, y_train)
-    task_save_model(model)
-    print("Training completed")
-    return model
+ with mlflow.start_run():
+        # Log les hyperparamètres
+        mlflow.log_param("n_estimators", 100)
+        mlflow.log_param("max_depth", None)
+        # Étapes du pipeline
+        X_train, X_test, y_train, y_test = task_prepare_data(filepath)
+        model = task_train_model(X_train, y_train)
+        # Log la métrique d'accuracy (modifie si ta task_evaluate_model la retourne)
+        from sklearn.metrics import accuracy_score
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        mlflow.log_metric("accuracy", accuracy)
+
+        # Log hyperparameters (adapt to your actual model)
+        mlflow.log_param("model_type", "RandomForestClassifier")
+        mlflow.log_param("n_estimators", model.n_estimators)
+        mlflow.log_param("max_depth", model.max_depth)
+        # Enregistre le modèle dans MLflow ET sur disque
+        task_save_model(model)
+        mlflow.sklearn.log_model(model, name="churn_model")
+        print(f"Training completed — Accuracy: {accuracy:.4f}")
+        return model
 
 @flow(name="Evaluate", log_prints=True)
 def evaluate_flow(filepath="Churn_Modelling.csv"):
