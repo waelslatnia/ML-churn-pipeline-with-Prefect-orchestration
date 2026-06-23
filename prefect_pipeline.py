@@ -68,6 +68,54 @@ def evaluate_flow(filepath="Churn_Modelling.csv"):
     print(f"Evaluation completed. Accuracy: {accuracy:.4f}")
     return accuracy
 
+IMAGE_NAME = "wael_slatnia_3sde1_mlops"
+CONTAINER_NAME = "mlops-test"
+
+@task(name="docker-build-task")
+def task_docker_build(image_name: str = IMAGE_NAME, dockerfile_path: str = "."):
+    """Construit l'image Docker à partir du Dockerfile."""
+    print(f"🔨 Build de l'image Docker '{image_name}'...")
+    result = subprocess.run(
+        ["docker", "build", "-t", image_name, dockerfile_path],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(result.stderr)
+        raise RuntimeError(f"Échec du build Docker pour {image_name}")
+    print(f"✅ Image '{image_name}' construite avec succès.")
+    return image_name
+
+@task(name="docker-run-task")
+def task_docker_run(image_name: str = IMAGE_NAME, container_name: str = CONTAINER_NAME, port: int = 8000):
+    """Supprime un éventuel ancien conteneur puis lance le nouveau."""
+    print(f"🧹 Suppression de l'ancien conteneur '{container_name}' (si existant)...")
+    subprocess.run(["docker", "rm", "-f", container_name], capture_output=True, text=True)
+
+    print(f"🚀 Lancement du conteneur '{container_name}' depuis l'image '{image_name}'...")
+    result = subprocess.run(
+        ["docker", "run", "-d", "-p", f"{port}:8000", "--name", container_name, image_name],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(result.stderr)
+        raise RuntimeError(f"Échec du lancement du conteneur {container_name}")
+    container_id = result.stdout.strip()
+    print(f"✅ Conteneur lancé : {container_id}")
+    return container_id
+
+@flow(name="CD - Build et Run Docker", log_prints=True)
+def cd_flow(image_name: str = IMAGE_NAME, container_name: str = CONTAINER_NAME, port: int = 8000):
+    """
+    Flow de Déploiement Continu :
+    1. Build de l'image Docker
+    2. Lancement du conteneur
+    (Push Docker Hub volontairement omis)
+    """
+    img = task_docker_build(image_name)
+    container_id = task_docker_run(img, container_name, port)
+    print(f"🎉 Déploiement terminé. Conteneur actif : {container_id}")
+    return {"image": img, "container_id": container_id, "status": "deployed"}
+
 @flow(name="Lancement API FastAPI", log_prints=True)
 def api_flow(port: int = 8000):
     """Démarre le serveur FastAPI via Uvicorn"""
@@ -90,5 +138,7 @@ if __name__ == "__main__":
         evaluate_flow()
     elif flow_type == "api":
         api_flow()
+    elif flow_type == "cd":
+        cd_flow()
     else:
-        print("Unknown flow type. Use 'full', 'entrainement', 'evaluate' , or 'api' .")
+        print("Unknown flow type. Use 'full', 'entrainement', 'evaluate', 'api', or 'cd'.")
