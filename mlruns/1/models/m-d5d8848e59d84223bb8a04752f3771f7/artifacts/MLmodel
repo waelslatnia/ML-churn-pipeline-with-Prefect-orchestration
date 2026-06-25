@@ -1,0 +1,23 @@
+artifact_path: /home/msi/ml_project/mlruns/1/models/m-d5d8848e59d84223bb8a04752f3771f7/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+mlflow_version: 3.14.0
+model_id: m-d5d8848e59d84223bb8a04752f3771f7
+model_size_bytes: 18798619
+model_uuid: m-d5d8848e59d84223bb8a04752f3771f7
+prompts: null
+run_id: 8cccae7f2af8490fbc2fbcf63e01c061
+utc_time_created: '2026-06-23 18:56:52.611375'
